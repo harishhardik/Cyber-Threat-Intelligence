@@ -1,16 +1,20 @@
-# React + Vite
+# Cyber Threat Intelligence Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This project includes a React frontend and a FastAPI backend. The Vercel deployment setup below serves the frontend from the Vite build and routes API requests to the backend via /api.
 
-Currently, two official plugins are available:
+## Vercel deployment
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Push this repository to GitHub.
+2. In Vercel, import the repository.
+3. Vercel will use the provided vercel.json configuration automatically.
+4. Set these environment variables in Vercel:
+   - VITE_API_URL=/api
+   - GEMINI_API_KEY=your_key_here
+   - CORS_ORIGINS=https://your-app.vercel.app
 
-## React Compiler
+## Local development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: npm install && npm run dev
+- Backend: cd backend && pip install -r requirements.txt && uvicorn app:app --reload
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The frontend will call the backend at /api during Vercel deployments and at http://127.0.0.1:8000 locally unless VITE_API_URL is overridden.
