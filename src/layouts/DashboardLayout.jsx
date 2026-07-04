@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Shield, 
-  LayoutDashboard, 
-  Upload, 
-  Bot, 
-  FileText, 
-  Settings, 
-  LogOut, 
-  Bell, 
-  Search, 
-  Menu, 
-  X, 
+import {
+  Shield,
+  LayoutDashboard,
+  Upload,
+  Bot,
+  FileText,
+  Settings,
+  LogOut,
+  Bell,
+  Search,
+  Menu,
+  X,
   User,
   Activity,
   Globe
@@ -60,11 +60,10 @@ export default function DashboardLayout({ children }) {
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                     ? 'bg-soc-primary text-white shadow-lg shadow-soc-primary/20'
                     : 'text-soc-secondary hover:text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 {item.name}
@@ -144,7 +143,7 @@ export default function DashboardLayout({ children }) {
                   <>
                     {/* Backdrop cover for clicking away */}
                     <div className="fixed inset-0 z-20" onClick={() => setShowNotifications(false)}></div>
-                    
+
                     <motion.div
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -190,7 +189,7 @@ export default function DashboardLayout({ children }) {
                 <User className="w-5 h-5 text-soc-primary" />
               </div>
               <div className="hidden xl:block text-left">
-                <h3 className="text-xs font-semibold">Kishor (SOC Admin)</h3>
+                <h3 className="text-xs font-semibold">Admin</h3>
                 <span className="text-[10px] text-soc-secondary">Incident Response Command</span>
               </div>
             </div>
@@ -248,11 +247,10 @@ export default function DashboardLayout({ children }) {
                       key={item.name}
                       to={item.path}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                        isActive
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                           ? 'bg-soc-primary text-white shadow-lg shadow-soc-primary/20'
                           : 'text-soc-secondary hover:text-white hover:bg-white/5'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
                       {item.name}
