@@ -1,0 +1,2 @@
+dur,proto,service,state,spkts,dpkts,sbytes,dbytes,rate,sload,dload,sloss,dloss,sinpkt,dinpkt,sjit,djit,swin,stcpb,dtcpb,dwin,tcprtt,synack,ackdat,smean,dmean,trans_depth,response_body_len,ct_src_dport_ltm,ct_dst_sport_ltm,is_ftp_login,ct_ftp_cmd,ct_flw_http_mthd,is_sm_ips_ports,timestamp
+0.12,tcp,http,fin,10,8,800,1200,120.5,50000,75000,2,1,12.0,15.0,2.3,1.8,255,1001,2001,255,0.05,0.02,0.03,80,150,0,0,1,1,0,0,0,0,2026-07-04T10:25:00
