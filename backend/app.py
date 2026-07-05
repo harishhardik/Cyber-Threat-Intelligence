@@ -14,7 +14,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 from backend.utils.logger import logger, set_request_id
 from backend.services.ml_service import get_ml_service
 from backend.services.gemini_service import get_gemini_service
-from backend.routers import health, prediction, gemini, report
+from backend.routers import health, prediction, gemini, report, dashboard
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,6 +74,7 @@ app.include_router(health.router)
 app.include_router(prediction.router)
 app.include_router(gemini.router)
 app.include_router(report.router)
+app.include_router(dashboard.router)
 
 @app.get("/")
 async def root():

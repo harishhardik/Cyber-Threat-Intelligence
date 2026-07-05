@@ -231,6 +231,10 @@ Would you like me to write a checklist for setting up DNS Filtering rules?`
 // Helper to simulate API delay
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const CSV_HEADERS = "dur,proto,service,state,spkts,dpkts,sbytes,dbytes,rate,sload,dload,sloss,dloss,sinpkt,dinpkt,sjit,djit,swin,stcpb,dtcpb,dwin,tcprtt,synack,ackdat,smean,dmean,trans_depth,response_body_len,ct_src_dport_ltm,ct_dst_sport_ltm,is_ftp_login,ct_ftp_cmd,ct_flw_http_mthd,is_sm_ips_ports,timestamp";
+const SQL_MOCK_ROW = "0.12,tcp,http,fin,10,8,800,1200,120.5,50000,75000,2,1,12.0,15.0,2.3,1.8,255,1001,2001,255,0.05,0.02,0.03,80,150,0,0,1,1,0,0,0,0,2026-07-04T11:15:22";
+const PHISHING_MOCK_ROW = "0.25,tcp,http,fin,5,4,400,600,60.2,25000,37000,1,0,24.0,30.0,4.5,3.6,255,1002,2002,255,0.10,0.04,0.06,40,75,0,0,2,2,0,0,0,0,2026-07-04T11:08:45";
+
 export const securityService = {
   // GET /dashboard
   getDashboardData: async () => {
@@ -245,16 +249,46 @@ export const securityService = {
   },
 
   // POST /predict
-  predictLog: async (filename, logContent) => {
+  predictLog: async (file, logContent) => {
+    let finalFile = file;
+    let filename = typeof file === 'string' ? file : (file?.name || 'unknown_log.csv');
+
+    // Rename templates or format mock inputs to valid CSV files so the backend preprocessor succeeds
+    if (typeof file === 'string' || (file && !(file instanceof File) && file.name)) {
+      const isSql = filename.toLowerCase().includes('sql');
+      filename = isSql ? 'web_application_sql_injection_log.csv' : 'corporate_exchange_phishing_campaign_log.csv';
+      const csvContent = `${CSV_HEADERS}\n${isSql ? SQL_MOCK_ROW : PHISHING_MOCK_ROW}`;
+      const fileBlob = new Blob([csvContent], { type: 'text/csv' });
+      finalFile = new File([fileBlob], filename, { type: 'text/csv' });
+    }
+
     try {
-      const response = await API.post('/predict', { filename, logContent });
-      return response.data;
+      const formData = new FormData();
+      formData.append('file', finalFile);
+
+      const response = await API.post('/predict', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const data = response.data;
+      return {
+        filename,
+        attackCategory: data.attack,
+        confidenceScore: data.confidence / 100, // translate percentage (e.g. 98.0) back to fraction (e.g. 0.98)
+        threatLevel: data.severity,
+        predictionTime: '124ms', // static inference speed estimation
+        status: data.status,
+        timestamp: data.timestamp,
+      };
     } catch (error) {
-      console.warn('Backend API `/predict` unavailable. Running mock ML classifier.');
+      console.warn('Backend API `/predict` unavailable. Running mock ML classifier.', error);
       await delay(1500); // simulate ML processing
       
       // Fallback matching logic
-      const key = filename.toLowerCase().includes('csv') ? 'phishing_log.csv' : 'sql_injection.json';
+      const isPhishing = filename.toLowerCase().includes('phish') || filename.toLowerCase().includes('phishing');
+      const key = isPhishing ? 'phishing_log.csv' : 'sql_injection.json';
       const mockResult = MOCK_DATA.prediction[key] || MOCK_DATA.prediction['sql_injection.json'];
       
       return {
@@ -264,17 +298,43 @@ export const securityService = {
         threatLevel: mockResult.threatLevel,
         predictionTime: mockResult.predictionTime,
         status: mockResult.status,
+        timestamp: new Date().toISOString(),
       };
     }
   },
 
   // POST /gemini-analysis
-  getGeminiAnalysis: async (attackCategory, filename) => {
+  getGeminiAnalysis: async (prediction, filename) => {
     try {
-      const response = await API.post('/gemini-analysis', { attackCategory, filename });
-      return response.data;
+      // Map frontend properties back to backend's GeminiAnalysisRequest schema
+      const payload = {
+        attack: prediction.attackCategory,
+        confidence: prediction.confidenceScore * 100, // percentage 0-100
+        severity: prediction.threatLevel,
+        timestamp: prediction.timestamp || new Date().toISOString()
+      };
+
+      const response = await API.post('/gemini-analysis', payload);
+      const data = response.data;
+
+      // Translate backend GeminiAnalysisResponse back to frontend nested schemas
+      return {
+        description: data.threat_explanation,
+        technicalDetails: data.technical_analysis || "No technical signatures recorded.",
+        businessImpact: data.business_impact,
+        riskAssessment: data.risk_assessment,
+        mitigationSteps: data.mitigation.immediate_actions,
+        recommendedActions: {
+          immediate: (data.mitigation.immediate_actions || "").split('\n').map(s => s.trim().replace(/^\d+\.\s*/, '')).filter(Boolean),
+          longTerm: (data.mitigation.long_term_recommendations || "").split('\n').map(s => s.trim().replace(/^\d+\.\s*/, '')).filter(Boolean),
+          bestPractices: [
+            "Periodically audit firewall rules and block logs.",
+            "Integrate automated log scanners into existing pipelines."
+          ]
+        }
+      };
     } catch (error) {
-      console.warn('Backend API `/gemini-analysis` unavailable. Requesting Gemini emulation.');
+      console.warn('Backend API `/gemini-analysis` unavailable. Requesting Gemini emulation.', error);
       await delay(2000); // simulate LLM reasoning
       
       const key = filename?.toLowerCase()?.includes('csv') ? 'phishing_log.csv' : 'sql_injection.json';
@@ -287,10 +347,23 @@ export const securityService = {
   // POST /chat
   sendChatMessage: async (message, history = []) => {
     try {
-      const response = await API.post('/chat', { message, history });
-      return response.data;
+      // Map roles from frontend 'assistant'/'user' to backend 'model'/'user'
+      const mappedHistory = history.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        content: msg.content
+      }));
+
+      const response = await API.post('/chat', {
+        question: message,
+        history: mappedHistory
+      });
+
+      return {
+        response: response.data.response,
+        model: 'Gemini 1.5 Flash'
+      };
     } catch (error) {
-      console.warn('Backend API `/chat` unavailable. Resolving locally.');
+      console.warn('Backend API `/chat` unavailable. Resolving locally.', error);
       await delay(1200);
       
       // Search keywords in user message
@@ -309,17 +382,17 @@ export const securityService = {
       // Default response if no keywords match
       return {
         response: `### Security Assistant Connected
-
+ 
 I am your SOC Security Copilot powered by Google Gemini. I can assist you with monitoring, threat modeling, and incident remediation.
-
+ 
 I noticed your question: "${message}".
-
+ 
 Here are some suggested prompts I am trained on:
 1.  **Explain today's attacks** - Get a summary of active indicators.
 2.  **Why is this attack dangerous?** - Read a threat assessment on SQL Injection.
 3.  **Generate Incident Report** - View a structured report draft.
 4.  **How do I prevent phishing?** - Read recommendations on blocking social engineering campaigns.
-
+ 
 Let me know how you would like to proceed.`,
         model: 'Gemini 1.5 Pro (Emulated)',
       };
@@ -327,12 +400,30 @@ Let me know how you would like to proceed.`,
   },
 
   // POST /incident-report
-  getIncidentReport: async (incidentId) => {
+  getIncidentReport: async (incidentId, matchedThreat) => {
     try {
-      const response = await API.post('/incident-report', { incidentId });
-      return response.data;
+      // Map to IncidentReportRequest schema
+      const payload = {
+        attack: matchedThreat ? matchedThreat.attackType : "SQL Injection",
+        confidence: matchedThreat ? (matchedThreat.confidence <= 1.0 ? matchedThreat.confidence * 100.0 : matchedThreat.confidence) : 98.0,
+        severity: matchedThreat ? matchedThreat.severity : "Critical",
+        timestamp: matchedThreat ? matchedThreat.timestamp : new Date().toISOString(),
+        status: matchedThreat ? matchedThreat.status : "Active"
+      };
+
+      const response = await API.post('/incident-report', payload);
+      const data = response.data;
+
+      return {
+        incidentId: data.incident_id,
+        date: data.timestamp.split('T')[0],
+        attackCategory: data.attack,
+        severity: data.severity,
+        summary: data.executive_summary,
+        recommendation: data.mitigation + '\n' + data.recommendations,
+      };
     } catch (error) {
-      console.warn('Backend API `/incident-report` unavailable. Drafting standard response.');
+      console.warn('Backend API `/incident-report` unavailable. Drafting standard response.', error);
       await delay(1000);
       
       const dashboardThreats = MOCK_DATA.dashboard.threats;
@@ -349,3 +440,4 @@ Let me know how you would like to proceed.`,
     }
   }
 };
+

@@ -19,6 +19,7 @@ export const SecurityProvider = ({ children }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [selectedFileObj, setSelectedFileObj] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -90,6 +91,7 @@ export const SecurityProvider = ({ children }) => {
   // Log upload simulation
   const handleUploadFile = useCallback(async (file) => {
     setUploadedFile(file.name);
+    setSelectedFileObj(file);
     setUploadProgress(0);
     setPredictionResult(null);
     setGeminiExplanation(null);
@@ -118,7 +120,7 @@ export const SecurityProvider = ({ children }) => {
 
     try {
       // 1. Get model prediction
-      const prediction = await securityService.predictLog(uploadedFile, logContent);
+      const prediction = await securityService.predictLog(selectedFileObj || uploadedFile, logContent);
       setPredictionResult(prediction);
       addNotification('ML Prediction Complete: Threat detected.', 'warning', 3000);
 
@@ -128,7 +130,7 @@ export const SecurityProvider = ({ children }) => {
         addNotification('Querying Gemini model for reasoning & response metrics...', 'info', 2500);
       }
       
-      const analysis = await securityService.getGeminiAnalysis(prediction.attackCategory, uploadedFile);
+      const analysis = await securityService.getGeminiAnalysis(prediction, uploadedFile);
       setGeminiExplanation(analysis);
       
       if (apiSettings.geminiConnected) {
@@ -168,7 +170,7 @@ export const SecurityProvider = ({ children }) => {
       setIsAnalyzing(false);
       setLoadingGemini(false);
     }
-  }, [uploadedFile, addNotification, apiSettings.geminiConnected]);
+  }, [uploadedFile, selectedFileObj, addNotification, apiSettings.geminiConnected]);
 
   // Chat message sender
   const handleSendMessage = useCallback(async (text) => {
@@ -197,7 +199,8 @@ export const SecurityProvider = ({ children }) => {
   const handleGenerateReport = useCallback(async (incidentId) => {
     setLoadingReport(true);
     try {
-      const report = await securityService.getIncidentReport(incidentId);
+      const matchedThreat = dashboardData?.threats?.find(t => t.id === incidentId);
+      const report = await securityService.getIncidentReport(incidentId, matchedThreat);
       setActiveReport(report);
       addNotification(`Incident Report for ${incidentId} compiled successfully.`, 'success', 3000);
     } catch (err) {
@@ -205,7 +208,7 @@ export const SecurityProvider = ({ children }) => {
     } finally {
       setLoadingReport(false);
     }
-  }, [addNotification]);
+  }, [addNotification, dashboardData]);
 
   // Theme support stub (Vite Dark Theme by default)
   const [theme, setTheme] = useState('dark');
