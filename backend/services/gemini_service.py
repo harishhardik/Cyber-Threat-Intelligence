@@ -131,11 +131,17 @@ class GeminiService:
         
         explanation = explanations.get(attack, f"Detected malicious traffic pattern categorized as {attack}. The network sequence exhibits features highly correlated with security incidents.")
         
+        from backend.schemas.prediction_schema import MitigationDetails
+        
         return GeminiAnalysisResponse(
             threat_explanation=explanation,
             business_impact=f"If left unchecked, this {attack} activity could lead to unauthorized system access, compromise sensitive operations data, or degrade services. It may violate compliance standards (e.g., SOC2, ISO 27001) and impact client trust.",
+            technical_analysis=f"Network traffic packet sequence matching {attack} category signatures. State indicators confirm anomalous headers and data lengths.",
             risk_assessment=f"Risk Level: {severity}. The machine learning model identified this pattern with {confidence}% confidence. Immediate investigation is advised as the signature represents active staging or execution of an exploit.",
-            mitigation_steps=f"1. Isolate the affected IP/subnet from critical resources.\n2. Enable strict firewall rate-limiting and verify intrusion prevention system (IPS) rules.\n3. Conduct a credential audit and verify system patch status for exposed services.\n4. Analyze related server logs for secondary indicators of compromise.",
+            mitigation=MitigationDetails(
+                immediate_actions=f"1. Isolate the affected IP/subnet from critical resources.\n2. Enable strict firewall rate-limiting and verify intrusion prevention system (IPS) rules.\n3. Conduct a credential audit and verify system patch status for exposed services.\n4. Analyze related server logs for secondary indicators of compromise.",
+                long_term_recommendations=f"1. Enforce strict parameter verification protocols.\n2. Implement a unified Web Application Firewall (WAF) to inspect payload parameters.\n3. Implement continuous logging and anomaly detection at trust boundaries."
+            ),
             executive_summary=f"SentinelAI detected a {severity}-severity {attack} threat with a confidence level of {confidence}%. Recommended response is isolation and verification of active network controls to block further lateral movement."
         )
 
