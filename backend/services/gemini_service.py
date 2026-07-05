@@ -28,10 +28,12 @@ class GeminiService:
                 
                 # Check for standard models in priority order
                 priority_list = [
+                    "models/gemini-3.5-flash",
+                    "models/gemini-2.5-flash",
                     "models/gemini-1.5-flash",
                     "models/gemini-2.0-flash",
                     "models/gemini-1.5-pro",
-                    "models/gemini-2.0-flash-exp",
+                    "models/gemini-2.5-pro",
                 ]
                 
                 selected_model = None
