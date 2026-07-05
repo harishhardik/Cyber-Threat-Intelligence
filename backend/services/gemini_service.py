@@ -9,6 +9,7 @@ class GeminiService:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.is_mock = False
+        self.available_models = []
         
         # Check if the API key is valid or placeholder
         if not self.api_key or self.api_key in ("YOUR_GEMINI_API_KEY", "", "None"):
@@ -17,10 +18,39 @@ class GeminiService:
         else:
             try:
                 genai.configure(api_key=self.api_key)
-                # Test initializing model
-                self.model_name = "gemini-1.5-flash"
+                
+                # Dynamically discover available models to avoid 404s
+                try:
+                    self.available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                except Exception as list_err:
+                    logger.warning(f"Could not list available Gemini models: {str(list_err)}")
+                    self.available_models = [f"Error: {str(list_err)}"]
+                
+                # Check for standard models in priority order
+                priority_list = [
+                    "models/gemini-1.5-flash",
+                    "models/gemini-2.0-flash",
+                    "models/gemini-1.5-pro",
+                    "models/gemini-2.0-flash-exp",
+                ]
+                
+                selected_model = None
+                for model_path in priority_list:
+                    if any(model_path in am or am in model_path for am in self.available_models if isinstance(am, str) and not am.startswith("Error")):
+                        selected_model = model_path
+                        break
+                
+                # If priority model is not available but we have some model, pick the first generation model
+                if not selected_model and self.available_models and not any(isinstance(m, str) and m.startswith("Error") for m in self.available_models):
+                    selected_model = self.available_models[0]
+                
+                # Fallback default if all else fails
+                if not selected_model:
+                    selected_model = "models/gemini-1.5-flash"
+                
+                self.model_name = selected_model.replace("models/", "")
                 self.model = genai.GenerativeModel(self.model_name)
-                logger.info(f"Gemini service initialized successfully using model: {self.model_name}")
+                logger.info(f"Gemini service initialized successfully using model: {self.model_name} (Detected available: {self.available_models})")
             except Exception as e:
                 logger.error(f"Failed to initialize Google Gemini API: {str(e)}. Falling back to MOCK MODE.")
                 self.is_mock = True

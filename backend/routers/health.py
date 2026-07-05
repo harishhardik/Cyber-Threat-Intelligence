@@ -25,10 +25,14 @@ async def health_check():
         logger.error(f"Health Check - ML model status error: {str(e)}")
 
     # Check Gemini Service status
+    selected_model = None
+    available_models = []
     try:
         gemini_service = get_gemini_service()
         if not gemini_service.is_mock:
             gemini_connected = True
+            selected_model = gemini_service.model_name
+            available_models = gemini_service.available_models
     except Exception as e:
         logger.error(f"Health Check - Gemini service status error: {str(e)}")
 
@@ -36,5 +40,7 @@ async def health_check():
         "status": "healthy",
         "model_loaded": model_loaded,
         "gemini_connected": gemini_connected,
+        "selected_model": selected_model,
+        "available_models": available_models,
         "version": "1.0.0"
     }
